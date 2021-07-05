@@ -95,12 +95,9 @@ type Conf struct {
 	RTMPDisable bool   `yaml:"rtmpDisable"`
 	RTMPAddress string `yaml:"rtmpAddress"`
 
-	// hls
-	HLSDisable         bool          `yaml:"hlsDisable"`
-	HLSAddress         string        `yaml:"hlsAddress"`
-	HLSSegmentCount    int           `yaml:"hlsSegmentCount"`
-	HLSSegmentDuration time.Duration `yaml:"hlsSegmentDuration"`
-	HLSAllowOrigin     string        `yaml:"hlsAllowOrigin"`
+	// http
+	HTTPAddress         string        `yaml:"httpAddress"`
+	HTTPAllowOrigin     string        `yaml:"httpAllowOrigin"`
 
 	// paths
 	Paths map[string]*PathConf `yaml:"paths"`
@@ -258,17 +255,12 @@ func (conf *Conf) fillAndCheck() error {
 		conf.RTMPAddress = ":1935"
 	}
 
-	if conf.HLSAddress == "" {
-		conf.HLSAddress = ":8888"
+	if conf.HTTPAddress == "" {
+		conf.HTTPAddress = ":8888"
 	}
-	if conf.HLSSegmentCount == 0 {
-		conf.HLSSegmentCount = 5
-	}
-	if conf.HLSSegmentDuration == 0 {
-		conf.HLSSegmentDuration = 1 * time.Second
-	}
-	if conf.HLSAllowOrigin == "" {
-		conf.HLSAllowOrigin = "*"
+
+	if conf.HTTPAllowOrigin == "" {
+		conf.HTTPAllowOrigin = "*"
 	}
 
 	if len(conf.Paths) == 0 {

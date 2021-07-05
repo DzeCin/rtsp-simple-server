@@ -2,14 +2,13 @@ package rtmpserver
 
 import (
 	"context"
-	"net"
-	"sync"
-	"time"
-
 	"github.com/aler9/rtsp-simple-server/internal/logger"
 	"github.com/aler9/rtsp-simple-server/internal/pathman"
 	"github.com/aler9/rtsp-simple-server/internal/rtmpconn"
 	"github.com/aler9/rtsp-simple-server/internal/stats"
+	"net"
+	"sync"
+	"time"
 )
 
 // Parent is implemented by program.

@@ -10,7 +10,7 @@ logDestinations: [stdout]
 logFile: rtsp-simple-server.log
 
 # timeout of read operations.
-readTimeout: 10s
+readTimeout: 11s
 # timeout of write operations.
 writeTimeout: 10s
 # number of read buffers.
@@ -35,6 +35,10 @@ runOnConnect:
 # the restart parameter allows to restart the command if it exits suddenly.
 runOnConnectRestart: no
 
+###############################################
+# HTTP parameters
+httpAddress: 127.0.0.1:8085
+httpAllowOrigin:
 ###############################################
 # RTSP parameters
 
@@ -85,25 +89,6 @@ readBufferSize: 2048
 rtmpDisable: no
 # address of the RTMP listener.
 rtmpAddress: :1935
-
-###############################################
-# HLS parameters
-
-# disable support for the HLS protocol.
-hlsDisable: no
-# address of the HLS listener.
-hlsAddress: :8888
-# number of HLS segments to generate.
-# increasing segments allows more buffering,
-# decreasing segments decrease latency.
-hlsSegmentCount: 3
-# minimum duration of each segment.
-# the real segment duration is also influenced by the interval between IDR frames,
-# since the server changes the segment duration to include at least one IDR frame in each.
-hlsSegmentDuration: 1s
-# value of the Access-Control-Allow-Origin header provided in every HTTP response.
-# This allows to play the HLS stream from an external website.
-hlsAllowOrigin: '*'
 
 ###############################################
 # Path parameters

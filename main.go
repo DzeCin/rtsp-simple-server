@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/aler9/rtsp-simple-server/internal/httpserver"
 	"os"
 	"reflect"
 	"sync/atomic"
@@ -11,7 +12,6 @@ import (
 
 	"github.com/aler9/rtsp-simple-server/internal/conf"
 	"github.com/aler9/rtsp-simple-server/internal/confwatcher"
-	"github.com/aler9/rtsp-simple-server/internal/hlsserver"
 	"github.com/aler9/rtsp-simple-server/internal/logger"
 	"github.com/aler9/rtsp-simple-server/internal/metrics"
 	"github.com/aler9/rtsp-simple-server/internal/pathman"
@@ -38,8 +38,8 @@ type program struct {
 	rtspServerPlain *rtspserver.Server
 	rtspServerTLS   *rtspserver.Server
 	rtmpServer      *rtmpserver.Server
-	hlsServer       *hlsserver.Server
 	confWatcher     *confwatcher.ConfWatcher
+	httpServer      *httpserver.Server
 
 	// out
 	done chan struct{}
@@ -118,23 +118,9 @@ func (p *program) Log(level logger.Level, format string, args ...interface{}) {
 func (p *program) run() {
 	defer close(p.done)
 
-	confChanged := func() chan struct{} {
-		if p.confWatcher != nil {
-			return p.confWatcher.Watch()
-		}
-		return make(chan struct{})
-	}()
-
 outer:
 	for {
 		select {
-		case <-confChanged:
-			err := p.reloadConf()
-			if err != nil {
-				p.Log(logger.Info, "ERR: %s", err)
-				break outer
-			}
-
 		case <-p.ctx.Done():
 			break outer
 		}
@@ -300,22 +286,14 @@ func (p *program) createResources(initial bool) error {
 		}
 	}
 
-	if !p.conf.HLSDisable {
-		if p.hlsServer == nil {
-			p.hlsServer, err = hlsserver.New(
-				p.ctx,
-				p.conf.HLSAddress,
-				p.conf.HLSSegmentCount,
-				p.conf.HLSSegmentDuration,
-				p.conf.HLSAllowOrigin,
-				p.conf.ReadBufferCount,
-				p.stats,
-				p.pathMan,
-				p)
-			if err != nil {
-				return err
-			}
-		}
+	p.httpServer, err = httpserver.New(
+		p.conf.HTTPAddress,
+		p,
+		p.ctx,
+		)
+
+	if err != nil{
+		return err
 	}
 
 	return nil
@@ -421,19 +399,19 @@ func (p *program) closeResources(newConf *conf.Conf) {
 		closeServerRTMP = true
 	}
 
-	closeServerHLS := false
+	closeServerHTTP := false
+
 	if newConf == nil ||
-		newConf.HLSDisable != p.conf.HLSDisable ||
-		newConf.HLSAddress != p.conf.HLSAddress ||
-		newConf.HLSSegmentCount != p.conf.HLSSegmentCount ||
-		newConf.HLSSegmentDuration != p.conf.HLSSegmentDuration ||
-		newConf.HLSAllowOrigin != p.conf.HLSAllowOrigin ||
-		newConf.ReadBufferCount != p.conf.ReadBufferCount ||
-		closeStats ||
-		closePathMan {
-		closeServerHLS = true
+		newConf.HTTPAddress != p.conf.HTTPAddress ||
+		newConf.HTTPAllowOrigin != p.conf.HTTPAllowOrigin{
+
+		closeServerHTTP = true
 	}
 
+	if closeServerHTTP && p.httpServer != nil {
+		p.httpServer.Close()
+		p.httpServer = nil
+	}
 	if closeServerTLS && p.rtspServerTLS != nil {
 		p.rtspServerTLS.Close()
 		p.rtspServerTLS = nil
@@ -447,11 +425,6 @@ func (p *program) closeResources(newConf *conf.Conf) {
 	if closePathMan && p.pathMan != nil {
 		p.pathMan.Close()
 		p.pathMan = nil
-	}
-
-	if closeServerHLS && p.hlsServer != nil {
-		p.hlsServer.Close()
-		p.hlsServer = nil
 	}
 
 	if closeServerRTMP && p.rtmpServer != nil {
@@ -477,20 +450,6 @@ func (p *program) closeResources(newConf *conf.Conf) {
 	if closeStats && p.stats != nil {
 		p.stats.Close()
 	}
-}
-
-func (p *program) reloadConf() error {
-	p.Log(logger.Info, "reloading configuration")
-
-	newConf, _, err := conf.Load(p.confPath)
-	if err != nil {
-		return err
-	}
-
-	p.closeResources(newConf)
-
-	p.conf = newConf
-	return p.createResources(false)
 }
 
 func main() {
